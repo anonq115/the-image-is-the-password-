@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Comparison</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+</head>
+<body>
+    <input type="file" id="fileInput1" accept="image/*">
+    <input type="file" id="fileInput2" accept="image/*">
+    <canvas id="imageCanvas1" width="120" height="150"></canvas>
+    <canvas id="imageCanvas2" width="120" height="150"></canvas>
+    <div id="encryptionKey" style="display: none;"></div>
+    <button id="submitButton1" style="display: none;">Submit Image 1</button>
+    <button id="submitButton2" style="display: none;">Submit Image 2</button>
+    <button id="compareButton" style="display: none;">Compare Images</button>
+    <script>
+        const fileInput1 = document.getElementById('fileInput1');
+        const fileInput2 = document.getElementById('fileInput2');
+        const canvas1 = document.getElementById('imageCanvas1');
+        const canvas2 = document.getElementById('imageCanvas2');
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        const submitButton1 = document.getElementById('submitButton1');
+        const submitButton2 = document.getElementById('submitButton2');
+        const compareButton = document.getElementById('compareButton');
+        const encryptionKeyDiv = document.getElementById('encryptionKey');
+        let hash1, hash2;
+        let userData = {}; // Object to store user data
+
+        fileInput1.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(readerEvent) {
+                const image = new Image();
+                image.onload = function() {
+                    canvas1.width = 120;
+                    canvas1.height = 150;
+                    ctx1.drawImage(image, 0, 0, 120, 150);
+                    hash1 = sha256(canvas1.toDataURL());
+                    submitButton1.style.display = 'block';
+                    encryptionKeyDiv.innerText = hash1;
+                    encryptionKeyDiv.style.display = 'block';
+                };
+                image.src = readerEvent.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        fileInput2.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(readerEvent) {
+                const image = new Image();
+                image.onload = function() {
+                    canvas2.width = 120;
+                    canvas2.height = 150;
+                    ctx2.drawImage(image, 0, 0, 120, 150);
+                    hash2 = sha256(canvas2.toDataURL());
+                    submitButton2.style.display = 'block';
+                };
+                image.src = readerEvent.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        submitButton1.addEventListener('click', function() {
+            alert("Image 1 submitted!");
+            submitButton1.style.display = 'none';
+            if (submitButton2.style.display === 'none') {
+                compareButton.style.display = 'block';
+            }
+            // Store user data
+            userData.username = prompt("Enter your username:");
+            userData.profileBio = prompt("Enter your profile bio:");
+        });
+
+        submitButton2.addEventListener('click', function() {
+            alert("Image 2 submitted!");
+            submitButton2.style.display = 'none';
+            if (submitButton1.style.display === 'none') {
+                compareButton.style.display = 'block';
+            }
+        });
+
+        compareButton.addEventListener('click', function() {
+            if (hash1 === hash2) {
+                alert("The images are the same. Successfully logged in.");
+                // Store the hash and user data
+                userData.imageHash = hash1;
+                console.log(userData);
+            } else {
+                alert("The images are different.");
+            }
+        });
+    </script>
+</body>
+</html>
