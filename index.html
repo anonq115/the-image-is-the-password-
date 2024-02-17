@@ -3,32 +3,135 @@
 <head>
     <title>Image Comparison</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+    <style>
+        #dropContainer {
+            border: 2px dashed #aaa;
+            width: 240px;
+            height: 300px;
+            text-align: center;
+            padding-top: 20px;
+            margin-bottom: 20px;
+        }
+        #dropContainer.hover {
+            border-color: #333;
+        }
+        .input-container {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .centered-fields{display:flex; 
+        align-items:center; align-items: center;
+flex-direction: column;}
+    </style>
 </head>
 <body>
-    <input type="file" id="fileInput1" accept="image/*">
-    <input type="file" id="fileInput2" accept="image/*">
+    <div id="dropContainer" class="drop-container">
+        Drop your image here to log in or start a new profile
+    </div>
+    <div class=  'centered-fields'>
+    <input type="file" id="fileInput1" accept="image/*" style="display: none;">
     <canvas id="imageCanvas1" width="120" height="150"></canvas>
-    <canvas id="imageCanvas2" width="120" height="150"></canvas>
     <div id="encryptionKey" style="display: none;"></div>
-    <button id="submitButton1" style="display: none;">Submit Image 1</button>
-    <button id="submitButton2" style="display: none;">Submit Image 2</button>
-    <button id="compareButton" style="display: none;">Compare Images</button>
+    <div id="profileInfo" style="display: none;"></div>
+    <div id="nameInput" class="input-container">
+        <input type="text" id="usernameInput" placeholder="Enter your username">
+        <button id="nameSubmitButton">Submit</button>
+    </div>
+    <div id="bioInput" class="input-container">
+        <input type="text" id="bioTextInput" placeholder="Enter your profile bio">
+        <button id="bioSubmitButton">Submit</button>    
+    </div>
+    <math-problem></math-problem>
+    </div>
     <script>
-        const fileInput1 = document.getElementById('fileInput1');
-        const fileInput2 = document.getElementById('fileInput2');
+        customElements.define('math-problem', class extends HTMLElement {
+    connectedCallback() {
+        this.innerHTML = `
+            <div id="mathProblem" class="input-container" style="display: none;">
+                <input type="text" id="mathProblemInput" placeholder="Solve the math problem">
+                <button id="mathProblemSubmitButton">Submit</button>
+            </div>
+        `;
+        const mathProblemContainer = document.getElementById('mathProblem');
+        const mathProblemInput = document.getElementById('mathProblemInput');
+        const mathProblemSubmitButton = document.getElementById('mathProblemSubmitButton');
+        let answer;
+
+        function generateMathProblem() {
+            const operators = ['+', '-', '*'];
+            const operator1 = operators[Math.floor(Math.random() * operators.length)];
+            const operator2 = operators[Math.floor(Math.random() * operators.length)];
+            const number1 = Math.floor(Math.random() * 10);
+            const number2 = Math.floor(Math.random() * 10);
+            const number3 = Math.floor(Math.random() * 10);
+            const problem = `${number1} ${operator1} ${number2} ${operator2} ${number3}`;
+            answer = eval(problem);
+            return problem;
+        }
+
+        function showMathProblem() {
+            const problem = generateMathProblem();
+            mathProblemContainer.style.display = 'block';
+            mathProblemInput.value = '';
+            mathProblemInput.placeholder = problem + ' = ?';
+            mathProblemInput.focus();
+        }
+
+        mathProblemSubmitButton.addEventListener('click', function() {
+            const userAnswer = parseInt(mathProblemInput.value);
+            if (!isNaN(userAnswer) && userAnswer === answer) {
+                mathProblemContainer.style.display = 'none';
+                document.getElementById('bioTextInput').focus(); // Focus on bio input after math problem is solved
+                document.getElementById('bioSubmitButton').disabled = false; // Enable bio submit button
+                alert("Math problem solved! Profile created.");
+            } else {
+                alert("Incorrect answer. Please try again.");
+            }
+        });
+
+        mathProblemInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                mathProblemSubmitButton.click();
+            }
+        });
+
+        // Show math problem after bio is submitted
+        document.getElementById('bioSubmitButton').addEventListener('click', function() {
+            showMathProblem();
+            document.getElementById('bioSubmitButton').disabled = true; // Disable bio submit button until math problem is solved
+        });
+
+    }
+});
+
+        const dropContainer = document.getElementById('dropContainer');
         const canvas1 = document.getElementById('imageCanvas1');
-        const canvas2 = document.getElementById('imageCanvas2');
         const ctx1 = canvas1.getContext('2d');
-        const ctx2 = canvas2.getContext('2d');
-        const submitButton1 = document.getElementById('submitButton1');
-        const submitButton2 = document.getElementById('submitButton2');
-        const compareButton = document.getElementById('compareButton');
         const encryptionKeyDiv = document.getElementById('encryptionKey');
-        let hash1, hash2;
+        const profileInfoDiv = document.getElementById('profileInfo');
+        const nameInputContainer = document.getElementById('nameInput');
+        const usernameInput = document.getElementById('usernameInput');
+        const nameSubmitButton = document.getElementById('nameSubmitButton');
+        const bioInputContainer = document.getElementById('bioInput');
+        const bioTextInput = document.getElementById('bioTextInput');
+        const bioSubmitButton = document.getElementById('bioSubmitButton');
+        let hash1;
         let userData = {}; // Object to store user data
 
-        fileInput1.addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        dropContainer.addEventListener('dragover', function(event) {
+            event.preventDefault();
+            dropContainer.classList.add('hover');
+        });
+
+        dropContainer.addEventListener('dragleave', function(event) {
+            dropContainer.classList.remove('hover');
+        });
+
+        dropContainer.addEventListener('drop', function(event) {
+            event.preventDefault();
+            dropContainer.classList.remove('hover');
+            const file = event.dataTransfer.files[0];
             const reader = new FileReader();
 
             reader.onload = function(readerEvent) {
@@ -38,62 +141,72 @@
                     canvas1.height = 150;
                     ctx1.drawImage(image, 0, 0, 120, 150);
                     hash1 = sha256(canvas1.toDataURL());
-                    submitButton1.style.display = 'block';
                     encryptionKeyDiv.innerText = hash1;
                     encryptionKeyDiv.style.display = 'block';
+                    // Check if user already exists
+                    if (userData[hash1]) {
+                        // User exists, log them in
+                        alert("Welcome back!");
+                        // Display profile information
+                        const user = userData[hash1];
+                        profileInfoDiv.innerText = `Username: ${user.username}\nProfile Bio: ${user.profileBio}`;
+                        profileInfoDiv.style.display = 'block';
+                    } else {
+                        // User does not exist, prompt for username
+                        nameInputContainer.style.display = 'block';
+                    }
                 };
                 image.src = readerEvent.target.result;
+                // Clear old profile info
+                profileInfoDiv.style.display = 'none';
+                // Clear input fields
+                usernameInput.value = '';
+                bioTextInput.value = '';
             };
 
             reader.readAsDataURL(file);
         });
 
-        fileInput2.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(readerEvent) {
-                const image = new Image();
-                image.onload = function() {
-                    canvas2.width = 120;
-                    canvas2.height = 150;
-                    ctx2.drawImage(image, 0, 0, 120, 150);
-                    hash2 = sha256(canvas2.toDataURL());
-                    submitButton2.style.display = 'block';
-                };
-                image.src = readerEvent.target.result;
-            };
-
-            reader.readAsDataURL(file);
-        });
-
-        submitButton1.addEventListener('click', function() {
-            alert("Image 1 submitted!");
-            submitButton1.style.display = 'none';
-            if (submitButton2.style.display === 'none') {
-                compareButton.style.display = 'block';
+        nameSubmitButton.addEventListener('click', function() {
+            const username = usernameInput.value.trim();
+            if (username === '') {
+                alert("Username cannot be empty!");
+                return;
             }
-            // Store user data
-            userData.username = prompt("Enter your username:");
-            userData.profileBio = prompt("Enter your profile bio:");
+            // Store the username
+            userData[hash1] = { username: username };
+            // Display the username
+            nameInputContainer.style.display = 'none';
+            profileInfoDiv.innerText = `Username: ${username}`;
+            bioInputContainer.style.display = 'block';
+            bioTextInput.focus(); // Automatically focus on the bio input field
         });
 
-        submitButton2.addEventListener('click', function() {
-            alert("Image 2 submitted!");
-            submitButton2.style.display = 'none';
-            if (submitButton1.style.display === 'none') {
-                compareButton.style.display = 'block';
+        bioSubmitButton.addEventListener('click', function() {
+            const bio = bioTextInput.value.trim();
+            if (bio === '') {
+                alert("Bio cannot be empty!");
+                return;
+            }
+            // Store the bio
+            userData[hash1].profileBio = bio;
+            // Display the profile information
+            bioInputContainer.style.display = 'none';
+            profileInfoDiv.innerText += `\nProfile Bio: ${bio}`;
+            profileInfoDiv.style.display = 'block';
+            console.log('All profiles:', userData); // Log all profiles
+        });
+
+        // Allow pressing Enter in the input fields to submit
+        usernameInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                nameSubmitButton.click();
             }
         });
 
-        compareButton.addEventListener('click', function() {
-            if (hash1 === hash2) {
-                alert("The images are the same. Successfully logged in.");
-                // Store the hash and user data
-                userData.imageHash = hash1;
-                console.log(userData);
-            } else {
-                alert("The images are different.");
+        bioTextInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                bioSubmitButton.click();
             }
         });
     </script>
